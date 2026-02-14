@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Campus Life Planner</title>
+    <link rel="stylesheet" href="styles/main.css" />
+  </head>
+  <body>
+    <header>
+      <button id="burger">&#9776;</button>
+      <select id="sort-select">
+        <option value="date_modified">Date modified</option>
+        <option value="date_added">Date added</option>
+        <option value="a_to_z">A-Z</option>
+        <option value="due_date">Due date</option>
+      </select>
+      <label for="search-input">Search tasks</label>
+      <input id="search-input" type="text" />
+    </header>
+    <main>
+      <section>
+        <div id="card-wrapp">
+          <div class="card">
+            <h3>ASSIGNMENT</h3>
+            <p>due:20 feb 26</p>
+            <p>6 days remaining</p>
+          </div>
+          <div class="card">
+            <h3>ASSIGNMENT</h3>
+            <p>due:20 feb 26</p>
+            <p>6 days remaining</p>
+          </div>
+          <div class="card">
+            <h3>ASSIGNMENT</h3>
+            <p>due:20 feb 26</p>
+            <p>6 days remaining</p>
+          </div>
+          <div class="card">
+            <h3>ASSIGNMENT</h3>
+            <p>due:20 feb 26</p>
+            <p>6 days remaining</p>
+          </div>
+        </div>
+      </section>
+      <aside>
+        <button>add +</button>
+        <button>remove -</button>
+        <button>edit</button>
+        <button>settings</button>
+      </aside>
+    </main>
+    <footer>
+      <p>made by ALU</p>
+    </footer>
+
+    <script src="scripts/ui.js"></script>
+  </body>
+</html>

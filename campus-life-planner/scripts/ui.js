@@ -1,4 +1,5 @@
 const cardWrap = document.getElementById('card-wrapp');
+const searchInput = document.getElementById('search-input');
 
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -7,15 +8,17 @@ function escapeHtml(text) {
 }
 
 function renderTasks() {
+  const searchText = searchInput.value;
+  const { tasks } = getFilteredTasks(searchText, '', '');
+
   cardWrap.innerHTML = '';
 
-  if (!AppState.tasks.length) {
-    cardWrap.innerHTML =
-      '<p class="empty-msg">No tasks yet. Click "add +" to create one!</p>';
+  if (!tasks.length) {
+    cardWrap.innerHTML = '<p class="empty-msg">No tasks found.</p>';
     return;
   }
 
-  AppState.tasks.forEach((task) => {
+  tasks.forEach((task) => {
     const div = document.createElement('div');
     div.className = 'card';
     div.dataset.id = task.id;
@@ -27,6 +30,8 @@ function renderTasks() {
     cardWrap.appendChild(div);
   });
 }
+
+searchInput.addEventListener('input', renderTasks);
 
 loadTasks(); //initialize
 renderTasks();

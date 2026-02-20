@@ -71,7 +71,7 @@ function sanitizeSqlInput(input) {
 }
 
 // Helper: Validate input is safe for database operations (if app uses backend)
-function isSafeDatabaseInput(input) {
+function isDatabaseInputSafe(input) {
   if (!input) return true;
   return !SQL_INJECTION_PATTERN.test(input);
 }

@@ -6,6 +6,7 @@
     <title>Campus Life Planner</title>
     <link rel="stylesheet" href="styles/main.css" />
     <link rel="stylesheet" href="styles/responsive.css" />
+    <link rel="stylesheet" href="styles/animations.css" />
   </head>
   <body>
     <!-- Skip to content -->
@@ -99,6 +100,7 @@
             </div>
           </div>
         </div>
+        <!-- Search input -->
         <label for="search-input" class="sr-only">Search tasks</label>
         <input
           id="search-input"
@@ -107,20 +109,22 @@
           aria-label="Search tasks"
           autocomplete="off"
         />
+
+        <!-- Settings -->
         <button id="settings-btn" aria-label="Open settings">&#9881;</button>
       </div>
     </header>
 
+    <!-- Navigation -->
     <nav id="main-nav" aria-label="App sections">
       <button class="nav-btn active" data-section="tasks" aria-current="page">
         Tasks
       </button>
       <button class="nav-btn" data-section="dashboard">Dashboard</button>
-      <button class="nav-btn" data-section="about">About</button>
     </nav>
 
     <main id="main-content" tabindex="-1">
-      <!-- ── Tasks section ─────────────────────────── -->
+      <!-- Tasks section -->
       <section id="section-tasks" aria-label="Task list">
         <div
           id="card-wrapp"
@@ -133,36 +137,71 @@
 
       <!-- ── Dashboard section ─────────────────────── -->
       <section id="section-dashboard" class="hidden" aria-label="Dashboard">
-        <h2>Dashboard</h2>
+        <h2>Dashboard Overview</h2>
+
+        <!-- stats grid -->
         <div id="stats-grid">
-          <div class="stat-card" role="region" aria-label="Total tasks">
-            <span class="stat-value" id="stat-total">0</span>
-            <span class="stat-label">Total Tasks</span>
+          <div
+            class="stat-card stat-total"
+            role="region"
+            aria-label="Total tasks"
+          >
+            <div class="stat-content">
+              <span class="stat-value" id="stat-total">0</span>
+              <span class="stat-label">Total Tasks</span>
+            </div>
           </div>
-          <div class="stat-card" role="region" aria-label="High priority tasks">
-            <span class="stat-value" id="stat-high">0</span>
-            <span class="stat-label">High Priority</span>
+          <div
+            class="stat-card stat-high"
+            role="region"
+            aria-label="High priority tasks"
+          >
+            <div class="stat-content">
+              <span class="stat-value" id="stat-high">0</span>
+              <span class="stat-label">High Priority</span>
+            </div>
           </div>
-          <div class="stat-card" role="region" aria-label="Due this week">
-            <span class="stat-value" id="stat-week">0</span>
-            <span class="stat-label">Due This Week</span>
+          <div
+            class="stat-card stat-week"
+            role="region"
+            aria-label="Due this week"
+          >
+            <div class="stat-content">
+              <span class="stat-value" id="stat-week">0</span>
+              <span class="stat-label">Due This Week</span>
+            </div>
           </div>
-          <div class="stat-card" role="region" aria-label="Completed tasks">
-            <span class="stat-value" id="stat-done">0</span>
-            <span class="stat-label">Completed</span>
+          <div
+            class="stat-card stat-done"
+            role="region"
+            aria-label="Completed tasks"
+          >
+            <div class="stat-content">
+              <span class="stat-value" id="stat-done">0</span>
+              <span class="stat-label">Completed</span>
+            </div>
           </div>
         </div>
 
+        <!-- Category breakdown -->
+        <h3>Tasks by Category</h3>
+        <div id="category-breakdown"></div>
+
+        <!-- Priority distribution -->
+        <h3>Priority Distribution</h3>
+        <div id="priority-chart"></div>
+
+        <!-- Activity chart -->
         <h3>Tasks added — last 7 days</h3>
         <div
           id="trend-chart"
           aria-label="Tasks added in last 7 days bar chart"
           role="img"
         ></div>
-
-        <h3>Task Cap / Target</h3>
+        <!-- Task cap -->
+        <h3>Task Capacity</h3>
         <div id="cap-row">
-          <label for="cap-input">Max open tasks:</label>
+          <label for="cap-input">Maximum open tasks:</label>
           <input
             type="number"
             id="cap-input"
@@ -178,88 +217,45 @@
           aria-live="polite"
           aria-atomic="true"
         ></div>
-      </section>
 
-      <!-- About section -->
-      <section id="section-about" class="hidden" aria-label="About">
-        <h2>About</h2>
-        <p>
-          Campus Life Planner helps students organise tasks, events, and
-          deadlines in one clean interface.
-        </p>
-        <h3>Contact</h3>
-        <ul>
-          <li>
-            GitHub:
-            <a
-              href="https://github.com/ijazz-mal"
-              target="_blank"
-              rel="noopener"
-              >github.com/ijazz-mal</a
-            >
-          </li>
-          <li>
-            Email:
-            <a href="mailto:i.henryjay@alustudent.com"
-              >i.henryjay@alustudent.com</a
-            >
-          </li>
-        </ul>
-        <h3>Features</h3>
-        <ul>
-          <li>
-            Add, edit, delete tasks with title, description, tag, priority, due
-            date &amp; duration
-          </li>
-          <li>Regex-powered live search with match highlighting</li>
-          <li>Sort by date created, modified, A–Z, due date, or priority</li>
-          <li>Stats dashboard with 7-day trend chart and task cap</li>
-          <li>JSON import / export with schema validation</li>
-          <li>Dark mode &amp; configurable card columns</li>
-          <li>Fully keyboard-accessible</li>
-        </ul>
-        <h3>Keyboard Shortcuts</h3>
-        <table id="keyboard-table">
-          <thead>
-            <tr>
-              <th>Key</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><kbd>N</kbd></td>
-              <td>New task (when not in an input)</td>
-            </tr>
-            <tr>
-              <td><kbd>/</kbd></td>
-              <td>Focus search</td>
-            </tr>
-            <tr>
-              <td><kbd>Esc</kbd></td>
-              <td>Close modal / sort panel</td>
-            </tr>
-            <tr>
-              <td><kbd>Enter</kbd></td>
-              <td>Submit form</td>
-            </tr>
-            <tr>
-              <td><kbd>Tab</kbd></td>
-              <td>Move between focusable elements</td>
-            </tr>
-            <tr>
-              <td><kbd>↑ ↓</kbd></td>
-              <td>Navigate sort options (when panel open)</td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- Progress meter -->
+        <div id="progress-meter">
+          <div class="progress-label">Overall Progress</div>
+          <div class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar"></div>
+          </div>
+          <div class="progress-text" id="progress-text">0% Complete</div>
+        </div>
       </section>
     </main>
 
     <footer role="contentinfo">
-      <p>
-        Made by ALU &mdash; <span id="footer-count" aria-live="polite"></span>
-      </p>
+      <div class="footer-links">
+        <a
+          href="https://github.com/ijazz-mal"
+          target="_blank"
+          rel="noopener"
+          aria-label="GitHub profile"
+          title="GitHub"
+        >
+          <svg width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+            <path
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+            />
+          </svg>
+        </a>
+        <a
+          href="mailto:student@alueducation.com"
+          aria-label="Email"
+          title="Email"
+        >
+          <svg width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+            <path
+              d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555ZM0 4.697v7.104l5.803-3.558L0 4.697ZM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586l-1.239-.757Zm3.436-.586L16 11.801V4.697l-5.803 3.546Z"
+            />
+          </svg>
+        </a>
+      </div>
     </footer>
 
     <!-- Floating Add Button -->
@@ -322,17 +318,15 @@
           </div>
 
           <div class="field-group">
-            <label for="form-tag">Tag</label>
-            <input
-              type="text"
-              id="form-tag"
-              placeholder="e.g. academic"
-              autocomplete="off"
-              aria-describedby="err-tag hint-tag"
-            />
-            <span id="hint-tag" class="field-hint"
-              >Letters, spaces, hyphens only</span
-            >
+            <label for="form-tag">Category</label>
+            <select id="form-tag" aria-describedby="err-tag">
+              <option value="">None</option>
+              <option value="academic">Academic</option>
+              <option value="personal">Personal</option>
+              <option value="professional">Professional</option>
+              <option value="financial">Financial</option>
+              <option value="entertainment">Entertainment</option>
+            </select>
             <span id="err-tag" class="field-error hidden" role="alert"></span>
           </div>
 
@@ -413,48 +407,155 @@
           </button>
         </div>
         <div class="modal-body">
-          <div class="field-group">
-            <label for="settings-theme">Theme</label>
-            <select id="settings-theme">
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
+          <!-- Settings tabs -->
+          <div class="settings-tabs">
+            <button class="settings-tab active" data-tab="preferences">
+              Preferences
+            </button>
+            <button class="settings-tab" data-tab="about">About</button>
+            <button class="settings-tab" data-tab="help">Help!</button>
           </div>
-          <div class="field-group">
-            <label for="settings-columns">Cards per row</label>
-            <select id="settings-columns">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3" selected>3</option>
-              <option value="4">4</option>
-            </select>
+
+          <!-- Preferences tab -->
+          <div id="tab-preferences" class="tab-content active">
+            <div class="field-group">
+              <label for="settings-theme">Theme</label>
+              <select id="settings-theme">
+                <option value="light">☀️ Light</option>
+                <option value="dark">🌙 Dark</option>
+              </select>
+            </div>
+
+            <div class="field-group">
+              <label for="settings-columns">Cards per row</label>
+              <select id="settings-columns">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+              </select>
+            </div>
+
+            <div class="field-group">
+              <label for="settings-regex-flags">
+                <input
+                  type="checkbox"
+                  id="settings-regex-flags"
+                  checked
+                  aria-label="Case insensitive search"
+                />
+                Case-insensitive search
+              </label>
+            </div>
+
+            <div class="settings-actions">
+              <button id="btn-export">Export JSON</button>
+              <label class="file-label" for="btn-import">Import JSON</label>
+              <input
+                type="file"
+                id="btn-import"
+                accept=".json"
+                class="sr-only"
+                aria-label="Import JSON file"
+              />
+            </div>
+            <div
+              id="import-status"
+              role="status"
+              aria-live="polite"
+              class="field-hint"
+            ></div>
           </div>
-          <div class="field-group">
-            <label for="settings-regex-flags">Search: case-insensitive</label>
-            <input
-              type="checkbox"
-              id="settings-regex-flags"
-              checked
-              aria-label="Case insensitive search"
-            />
+
+          <!-- About tab -->
+          <div id="tab-about" class="tab-content hidden">
+            <div class="about-content">
+              <h3>📚 Campus Life Planner</h3>
+              <p>
+                A powerful task management app designed specifically for
+                students to organize academic work, personal goals, and campus
+                activities all in one place.
+              </p>
+
+              <h4>Version</h4>
+              <p>1.0.0</p>
+
+              <h4>Contact</h4>
+              <ul class="contact-list">
+                <li>
+                  🐙 GitHub:
+                  <a
+                    href="https://github.com/ijazz-mal"
+                    target="_blank"
+                    rel="noopener"
+                    >github.com/ijazz-mal</a
+                  >
+                </li>
+                <li>
+                  ✉️ Email:
+                  <a href="mailto:student@alueducation.com"
+                    >student@alueducation.com</a
+                  >
+                </li>
+              </ul>
+
+              <h4>Made with ❤️ at ALU</h4>
+              <p>African Leadership University</p>
+            </div>
           </div>
-          <div class="settings-actions">
-            <button id="btn-export">Export JSON</button>
-            <label class="file-label" for="btn-import">Import JSON</label>
-            <input
-              type="file"
-              id="btn-import"
-              accept=".json"
-              class="sr-only"
-              aria-label="Import JSON file"
-            />
+
+          <!-- Help tab -->
+          <div id="tab-help" class="tab-content hidden">
+            <h3>Features</h3>
+            <ul class="feature-list">
+              <li>Create, edit, delete, and complete tasks</li>
+              <li>Organize with categories</li>
+              <li>Set priorities (Low, Medium, High)</li>
+              <li>Add due dates and durations</li>
+              <li>Powerful regex-based search</li>
+              <li>Visual dashboard with charts</li>
+              <li>Auto-save to browser</li>
+              <li>Import/Export tasks as JSON</li>
+              <li>Dark mode support</li>
+              <li>Fully keyboard accessible</li>
+            </ul>
+
+            <h3>Keyboard Shortcuts</h3>
+            <table class="keyboard-table">
+              <thead>
+                <tr>
+                  <th>Key</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><kbd>N</kbd></td>
+                  <td>Create new task</td>
+                </tr>
+                <tr>
+                  <td><kbd>/</kbd></td>
+                  <td>Focus search box</td>
+                </tr>
+                <tr>
+                  <td><kbd>Esc</kbd></td>
+                  <td>Close modal or panel</td>
+                </tr>
+                <tr>
+                  <td><kbd>Tab</kbd></td>
+                  <td>Navigate between elements</td>
+                </tr>
+                <tr>
+                  <td><kbd>↑ ↓</kbd></td>
+                  <td>Navigate sort menu</td>
+                </tr>
+                <tr>
+                  <td><kbd>Enter</kbd></td>
+                  <td>Submit form</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div
-            id="import-status"
-            role="status"
-            aria-live="polite"
-            class="field-hint"
-          ></div>
         </div>
         <div class="modal-footer">
           <button id="settings-cancel">Close</button>

@@ -1,570 +1,939 @@
-// Malicious HTML protection
-function escapeHtml(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
+// ══════════════════════════════════════════════════════════
+// CAMPUS LIFE PLANNER - USER INTERFACE CONTROLLER
+// ══════════════════════════════════════════════════════════
+// This file handles all DOM manipulation, user interactions,
+// animations, and visual updates for the application.
+
+// ── Helper Functions ──────────────────────────────────────
+
+/**
+ * Escapes HTML special characters to prevent XSS attacks
+ * @param {string} userTextInput - Raw text from user
+ * @returns {string} - HTML-safe escaped string
+ */
+function escapeHtmlCharacters(userTextInput) {
+  const temporaryDiv = document.createElement('div');
+  temporaryDiv.textContent = userTextInput || '';
+  return temporaryDiv.innerHTML;
 }
-// format time with locale, fallback to ISO(International Standard format for time) if invalid
-function fmtDateTime(t) {
-  if (!t) return '';
-  return new Date(t).toLocaleString([], {
+
+/**
+ * Formats timestamp into human-readable date and time
+ * @param {number|string} timestamp - Unix timestamp or ISO string
+ * @returns {string} - Formatted date string (e.g., "Feb 20, 2026, 3:30 PM")
+ */
+function formatDateTime(timestamp) {
+  if (!timestamp) return '';
+  return new Date(timestamp).toLocaleString([], {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
 }
 
-function announce(msg, assertive = false) {
-  const el = document.getElementById(
-    assertive ? 'live-assertive' : 'live-status',
+/**
+ * Announces messages to screen readers via ARIA live regions
+ * @param {string} messageText - Message to announce
+ * @param {boolean} isUrgent - If true, uses assertive live region
+ */
+function announceToScreenReader(messageText, isUrgent = false) {
+  const liveRegionElement = document.getElementById(
+    isUrgent ? 'live-assertive' : 'live-status',
   );
-  el.textContent = '';
-  // Used requestAnimationFrame to ensure screen readers detect the change
+  liveRegionElement.textContent = '';
   requestAnimationFrame(() => {
-    el.textContent = msg;
+    liveRegionElement.textContent = messageText;
   });
 }
-//To not repeate "document.getElementById" all over the code, created a helper function $
-function $(id) {
-  return document.getElementById(id);
+
+/**
+ * Shorthand for document.getElementById
+ * @param {string} elementId - Element ID
+ * @returns {HTMLElement} - The DOM element
+ */
+function getElement(elementId) {
+  return document.getElementById(elementId);
 }
 
-// default state variables
-let editingTaskId = null; //optional
-let currentSort = 'date_created';
-let currentOrder = 'asc';
-let caseInsensitive = true;
-let currentSection = 'tasks';
+// ── Application State Variables ───────────────────────────
 
-//  Section navigation
+// Currently editing task ID (null when adding new task)
+let currentlyEditingTaskId = null;
 
-function showSection(name) {
-  ['tasks', 'dashboard', 'about'].forEach((s) => {
-    $(`section-${s}`).classList.toggle('hidden', s !== name);
+// Current sort configuration
+let currentSortMethod = 'date_created';
+let currentSortDirection = 'asc';
+
+// Search settings
+let isSearchCaseInsensitive = true;
+
+// Currently visible section
+let currentlyVisibleSection = 'tasks';
+
+// ── Settings Tab Management ───────────────────────────────
+
+const settingsTabs = document.querySelectorAll('.settings-tab');
+const settingsTabContents = document.querySelectorAll('.tab-content');
+
+settingsTabs.forEach((tabButton) => {
+  tabButton.addEventListener('click', () => {
+    const targetTabName = tabButton.dataset.tab;
+
+    // Update active tab button
+    settingsTabs.forEach((tab) => tab.classList.remove('active'));
+    tabButton.classList.add('active');
+
+    // Show corresponding tab content
+    settingsTabContents.forEach((tabContentElement) => {
+      const isTargetTab = tabContentElement.id === `tab-${targetTabName}`;
+      tabContentElement.classList.toggle('hidden', !isTargetTab);
+      tabContentElement.classList.toggle('active', isTargetTab);
+    });
   });
-  document.querySelectorAll('.nav-btn').forEach((btn) => {
-    const active = btn.dataset.section === name;
-    btn.classList.toggle('active', active);
-    btn.setAttribute('aria-current', active ? 'page' : 'false');
+});
+
+// ── Section Navigation ────────────────────────────────────
+
+/**
+ * Shows specified section and hides others
+ * @param {string} sectionName - Name of section to show ('tasks' or 'dashboard')
+ */
+function showSection(sectionName) {
+  const allSections = ['tasks', 'dashboard'];
+
+  allSections.forEach((section) => {
+    const sectionElement = getElement(`section-${section}`);
+    const shouldShow = section === sectionName;
+    sectionElement.classList.toggle('hidden', !shouldShow);
+
+    // Add smooth fade-in animation when showing
+    if (shouldShow) {
+      sectionElement.style.animation = 'fadeIn 0.3s ease-in-out';
+    }
   });
-  currentSection = name;
-  if (name === 'dashboard') updateDashboard();
+
+  // Update navigation buttons
+  document.querySelectorAll('.nav-btn').forEach((navButton) => {
+    const isActiveButton = navButton.dataset.section === sectionName;
+    navButton.classList.toggle('active', isActiveButton);
+    navButton.setAttribute('aria-current', isActiveButton ? 'page' : 'false');
+  });
+
+  currentlyVisibleSection = sectionName;
+
+  // Update dashboard when showing it
+  if (sectionName === 'dashboard') {
+    updateDashboardDisplay();
+  }
 }
 
-document
-  .querySelectorAll('.nav-btn')
-  .forEach((btn) =>
-    btn.addEventListener('click', () => showSection(btn.dataset.section)),
-  );
+// Wire up navigation buttons
+document.querySelectorAll('.nav-btn').forEach((navButton) => {
+  navButton.addEventListener('click', () => {
+    showSection(navButton.dataset.section);
+  });
+});
 
-// ── Settings ──────────────────────────────────────────────
-const cardWrap = $('card-wrapp');
+// ── Settings Management ───────────────────────────────────
 
-function applySettings() {
-  const s = getSettings();
-  document.body.dataset.theme = s.theme || 'light';
-  cardWrap.style.gridTemplateColumns = `repeat(${s.columns || 3}, 1fr)`;
-  caseInsensitive = s.caseInsensitive !== false;
-  const chk = $('settings-regex-flags');
-  if (chk) chk.checked = caseInsensitive;
+const taskCardsContainer = getElement('card-wrapp');
+
+/**
+ * Applies saved user preferences (theme, columns, etc.)
+ */
+function applyUserSettings() {
+  const userSettings = getSettings();
+
+  // Apply theme
+  document.body.dataset.theme = userSettings.theme || 'light';
+
+  // Apply column count
+  const columnCount = userSettings.columns || 3;
+  taskCardsContainer.style.gridTemplateColumns = `repeat(${columnCount}, 1fr)`;
+
+  // Apply search preferences
+  isSearchCaseInsensitive = userSettings.caseInsensitive !== false;
+  const searchFlagsCheckbox = getElement('settings-regex-flags');
+  if (searchFlagsCheckbox) {
+    searchFlagsCheckbox.checked = isSearchCaseInsensitive;
+  }
 }
 
-$('settings-btn').addEventListener('click', () => {
-  const s = getSettings();
-  $('settings-theme').value = s.theme || 'light'; // light for default value
-  $('settings-columns').value = s.columns || '3'; // 3 for default value
-  $('settings-regex-flags').checked = s.caseInsensitive !== false; // true for default value
-  $('settings-modal').classList.remove('hidden'); // show modal/popup
-  $('settings-close').focus();
+// Settings button - open modal
+getElement('settings-btn').addEventListener('click', () => {
+  const userSettings = getSettings();
+  getElement('settings-theme').value = userSettings.theme || 'light';
+  getElement('settings-columns').value = userSettings.columns || '3';
+  getElement('settings-regex-flags').checked =
+    userSettings.caseInsensitive !== false;
+  getElement('settings-modal').classList.remove('hidden');
+  getElement('settings-close').focus();
 });
 
-function closeSettings() {
-  $('settings-modal').classList.add('hidden');
-  $('settings-btn').focus();
+// Close settings modal
+function closeSettingsModal() {
+  getElement('settings-modal').classList.add('hidden');
+  getElement('settings-btn').focus();
 }
-$('settings-close').addEventListener('click', closeSettings);
-$('settings-cancel').addEventListener('click', closeSettings);
-$('settings-modal').addEventListener('click', (e) => {
-  if (e.target === $('settings-modal')) closeSettings();
+
+getElement('settings-close').addEventListener('click', closeSettingsModal);
+getElement('settings-cancel').addEventListener('click', closeSettingsModal);
+getElement('settings-modal').addEventListener('click', (event) => {
+  if (event.target === getElement('settings-modal')) {
+    closeSettingsModal();
+  }
 });
 
-$('settings-theme').addEventListener('change', () => {
-  saveSettings({ theme: $('settings-theme').value });
-  applySettings();
-});
-$('settings-columns').addEventListener('change', () => {
-  saveSettings({ columns: $('settings-columns').value });
-  applySettings();
-});
-$('settings-regex-flags').addEventListener('change', () => {
-  caseInsensitive = $('settings-regex-flags').checked;
-  saveSettings({ caseInsensitive });
-  renderTasks();
+// Theme change
+getElement('settings-theme').addEventListener('change', () => {
+  saveSettings({ theme: getElement('settings-theme').value });
+  applyUserSettings();
+  announceToScreenReader('Theme updated');
 });
 
-// ── Export / Import ───────────────────────────────────────
-$('btn-export').addEventListener('click', () => {
+// Column count change
+getElement('settings-columns').addEventListener('change', () => {
+  saveSettings({ columns: getElement('settings-columns').value });
+  applyUserSettings();
+});
+
+// Search case sensitivity
+getElement('settings-regex-flags').addEventListener('change', () => {
+  isSearchCaseInsensitive = getElement('settings-regex-flags').checked;
+  saveSettings({ caseInsensitive: isSearchCaseInsensitive });
+  renderAllTasks();
+});
+
+// ── JSON Import/Export ────────────────────────────────────
+
+getElement('btn-export').addEventListener('click', () => {
   exportJSON();
-  announce('Tasks exported as JSON.');
+  announceToScreenReader('Tasks exported as JSON file.');
 });
 
-$('btn-import').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+getElement('btn-import').addEventListener('change', (event) => {
+  const selectedFile = event.target.files[0];
+  if (!selectedFile) return;
+
   importJSON(
-    file,
-    (added, total) => {
-      renderTasks();
-      updateDashboard();
-      $('import-status').textContent =
-        `Imported ${added} new tasks (${total} valid in file).`;
-      announce(`Imported ${added} new tasks.`);
+    selectedFile,
+    (numberOfNewTasks, totalValidTasks) => {
+      renderAllTasks();
+      updateDashboardDisplay();
+      getElement('import-status').textContent =
+        `Successfully imported ${numberOfNewTasks} new tasks (${totalValidTasks} valid in file).`;
+      announceToScreenReader(`Imported ${numberOfNewTasks} new tasks.`);
     },
-    (err) => {
-      $('import-status').textContent = `Import failed: ${err}`;
-      announce(`Import failed: ${err}`, true);
+    (errorMessage) => {
+      getElement('import-status').textContent =
+        `Import failed: ${errorMessage}`;
+      announceToScreenReader(`Import failed: ${errorMessage}`, true);
     },
   );
-  e.target.value = ''; // reset so same file can be re-imported
+
+  event.target.value = ''; // Reset so same file can be re-imported
 });
 
-// ── Sort dropdown ─────────────────────────────────────────
-const sortTrigger = $('sort-trigger');
-const sortPanel = $('sort-panel');
+// ── Sort Dropdown Management ──────────────────────────────
+
+const sortTriggerButton = getElement('sort-trigger');
+const sortPanelElement = getElement('sort-panel');
 
 function openSortPanel() {
-  sortPanel.classList.remove('hidden');
-  sortTrigger.setAttribute('aria-expanded', 'true');
-  sortPanel.querySelector('.sort-option.active')?.focus();
+  sortPanelElement.classList.remove('hidden');
+  sortTriggerButton.setAttribute('aria-expanded', 'true');
+  sortPanelElement.querySelector('.sort-option.active')?.focus();
 }
 
 function closeSortPanel() {
-  sortPanel.classList.add('hidden');
-  sortTrigger.setAttribute('aria-expanded', 'false');
+  sortPanelElement.classList.add('hidden');
+  sortTriggerButton.setAttribute('aria-expanded', 'false');
 }
 
-sortTrigger.addEventListener('click', (e) => {
-  e.stopPropagation();
-  sortPanel.classList.contains('hidden') ? openSortPanel() : closeSortPanel();
+// Toggle sort panel on click
+sortTriggerButton.addEventListener('click', (event) => {
+  event.stopPropagation();
+  const isCurrentlyOpen = !sortPanelElement.classList.contains('hidden');
+  isCurrentlyOpen ? closeSortPanel() : openSortPanel();
 });
 
+// Close sort panel when clicking outside
 document.addEventListener('click', () => closeSortPanel());
-sortPanel.addEventListener('click', (e) => e.stopPropagation());
 
-// Keyboard navigation within sort panel
-sortPanel.addEventListener('keydown', (e) => {
-  const items = [...sortPanel.querySelectorAll('.sort-option, .order-btn')];
-  const idx = items.indexOf(document.activeElement);
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    items[(idx + 1) % items.length]?.focus();
+// Prevent clicks inside panel from closing it
+sortPanelElement.addEventListener('click', (event) => event.stopPropagation());
+
+// Keyboard navigation within sort panel (arrow keys)
+sortPanelElement.addEventListener('keydown', (event) => {
+  const allSortItems = [
+    ...sortPanelElement.querySelectorAll('.sort-option, .order-btn'),
+  ];
+  const currentItemIndex = allSortItems.indexOf(document.activeElement);
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    const nextIndex = (currentItemIndex + 1) % allSortItems.length;
+    allSortItems[nextIndex]?.focus();
   }
-  if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    items[(idx - 1 + items.length) % items.length]?.focus();
+
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    const previousIndex =
+      (currentItemIndex - 1 + allSortItems.length) % allSortItems.length;
+    allSortItems[previousIndex]?.focus();
   }
-  if (e.key === 'Escape') {
+
+  if (event.key === 'Escape') {
     closeSortPanel();
-    sortTrigger.focus();
+    sortTriggerButton.focus();
   }
 });
 
-document.querySelectorAll('.sort-option').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.sort-option').forEach((b) => {
-      b.classList.remove('active');
-      b.setAttribute('aria-checked', 'false');
+// Sort option selection
+document.querySelectorAll('.sort-option').forEach((sortOptionButton) => {
+  sortOptionButton.addEventListener('click', () => {
+    // Update active state
+    document.querySelectorAll('.sort-option').forEach((button) => {
+      button.classList.remove('active');
+      button.setAttribute('aria-checked', 'false');
     });
-    btn.classList.add('active');
-    btn.setAttribute('aria-checked', 'true');
-    currentSort = btn.dataset.value;
-    renderTasks();
+    sortOptionButton.classList.add('active');
+    sortOptionButton.setAttribute('aria-checked', 'true');
+
+    currentSortMethod = sortOptionButton.dataset.value;
+    renderAllTasks();
   });
 });
 
-document.querySelectorAll('.order-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.order-btn').forEach((b) => {
-      b.classList.remove('active');
-      b.setAttribute('aria-checked', 'false');
+// Sort direction selection
+document.querySelectorAll('.order-btn').forEach((orderButton) => {
+  orderButton.addEventListener('click', () => {
+    // Update active state
+    document.querySelectorAll('.order-btn').forEach((button) => {
+      button.classList.remove('active');
+      button.setAttribute('aria-checked', 'false');
     });
-    btn.classList.add('active');
-    btn.setAttribute('aria-checked', 'true');
-    currentOrder = btn.dataset.order;
-    renderTasks();
+    orderButton.classList.add('active');
+    orderButton.setAttribute('aria-checked', 'true');
+
+    currentSortDirection = orderButton.dataset.order;
+    renderAllTasks();
   });
 });
 
-// ── Task Modal ────────────────────────────────────────────
-function clearErrors() {
-  document.querySelectorAll('.field-error').forEach((el) => {
-    el.textContent = '';
-    el.classList.add('hidden');
+// ── Task Modal Management ─────────────────────────────────
+
+/**
+ * Clears all error messages in the form
+ */
+function clearAllFormErrors() {
+  document.querySelectorAll('.field-error').forEach((errorElement) => {
+    errorElement.textContent = '';
+    errorElement.classList.add('hidden');
   });
-  $('form-error').classList.add('hidden');
+  getElement('form-error').classList.add('hidden');
 }
 
-function showFieldError(id, msg) {
-  const el = $(id);
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.remove('hidden');
+/**
+ * Displays error message for a specific field
+ * @param {string} errorElementId - ID of the error span element
+ * @param {string} errorMessage - Error message to display
+ */
+function showFieldErrorMessage(errorElementId, errorMessage) {
+  const errorElement = getElement(errorElementId);
+  if (!errorElement) return;
+  errorElement.textContent = errorMessage;
+  errorElement.classList.remove('hidden');
 }
 
-function openModal(task = null) {
-  editingTaskId = task?.id ?? null;
-  $('modal-title').textContent = task ? 'Edit Task' : 'Add Task';
-  $('form-title').value = task?.title ?? '';
-  $('form-description').value = task?.description ?? '';
-  $('form-tag').value = task?.tag ?? '';
-  $('form-priority').value = task?.priority ?? 'medium';
-  $('form-due-date').value = task?.dueDate ?? '';
-  $('form-duration-hours').value = task?.durationHours ?? '';
-  $('form-duration-minutes').value = task?.durationMinutes ?? '';
-  clearErrors();
-  $('task-modal').classList.remove('hidden');
-  $('form-title').focus();
+/**
+ * Opens task modal for adding or editing
+ * @param {Object} existingTask - Task object if editing, null if adding new
+ */
+function openTaskModal(existingTask = null) {
+  currentlyEditingTaskId = existingTask?.id ?? null;
+
+  // Update modal title
+  getElement('modal-title').textContent = existingTask
+    ? 'Edit Task'
+    : 'Add Task';
+
+  // Populate form fields
+  getElement('form-title').value = existingTask?.title ?? '';
+  getElement('form-description').value = existingTask?.description ?? '';
+  getElement('form-tag').value = existingTask?.tag ?? '';
+  getElement('form-priority').value = existingTask?.priority ?? 'medium';
+  getElement('form-due-date').value = existingTask?.dueDate ?? '';
+  getElement('form-duration-hours').value = existingTask?.durationHours ?? '';
+  getElement('form-duration-minutes').value =
+    existingTask?.durationMinutes ?? '';
+
+  clearAllFormErrors();
+
+  getElement('task-modal').classList.remove('hidden');
+  getElement('form-title').focus();
 }
 
-function closeModal() {
-  $('task-modal').classList.add('hidden');
-  editingTaskId = null;
-  $('add-btn').focus();
+/**
+ * Closes the task modal
+ */
+function closeTaskModal() {
+  getElement('task-modal').classList.add('hidden');
+  currentlyEditingTaskId = null;
+  getElement('add-btn').focus();
 }
 
-$('modal-close').addEventListener('click', closeModal);
-$('modal-cancel').addEventListener('click', closeModal);
-$('task-modal').addEventListener('click', (e) => {
-  if (e.target === $('task-modal')) closeModal();
+getElement('modal-close').addEventListener('click', closeTaskModal);
+getElement('modal-cancel').addEventListener('click', closeTaskModal);
+getElement('task-modal').addEventListener('click', (event) => {
+  if (event.target === getElement('task-modal')) {
+    closeTaskModal();
+  }
 });
-$('modal-submit').addEventListener('click', submitForm);
+getElement('modal-submit').addEventListener('click', submitTaskForm);
 
-// Trap focus inside modal
-$('task-modal').addEventListener('keydown', (e) => {
-  if (e.key !== 'Tab') return;
-  const focusable = [
-    ...$('task-modal').querySelectorAll(
+// Focus trap inside modal (for accessibility)
+getElement('task-modal').addEventListener('keydown', (event) => {
+  if (event.key !== 'Tab') return;
+
+  const allFocusableElements = [
+    ...getElement('task-modal').querySelectorAll(
       'button, input, textarea, select, [tabindex]:not([tabindex="-1"])',
     ),
-  ].filter((el) => !el.disabled);
-  const first = focusable[0],
-    last = focusable[focusable.length - 1];
-  if (e.shiftKey && document.activeElement === first) {
-    e.preventDefault();
-    last.focus();
-  } else if (!e.shiftKey && document.activeElement === last) {
-    e.preventDefault();
-    first.focus();
+  ].filter((element) => !element.disabled);
+
+  const firstFocusable = allFocusableElements[0];
+  const lastFocusable = allFocusableElements[allFocusableElements.length - 1];
+
+  if (event.shiftKey && document.activeElement === firstFocusable) {
+    event.preventDefault();
+    lastFocusable.focus();
+  } else if (!event.shiftKey && document.activeElement === lastFocusable) {
+    event.preventDefault();
+    firstFocusable.focus();
   }
 });
 
-function submitForm() {
-  clearErrors();
-  let hasError = false;
+/**
+ * Handles form submission for adding/editing tasks
+ */
+function submitTaskForm() {
+  clearAllFormErrors();
+  let formHasErrors = false;
 
-  const title = $('form-title').value.trim();
-  const titleErr = validateTitle(title);
-  if (titleErr) {
-    showFieldError('err-title', titleErr);
-    hasError = true;
+  // Validate title
+  const taskTitle = getElement('form-title').value.trim();
+  const titleError = validateTitle(taskTitle);
+  if (titleError) {
+    showFieldErrorMessage('err-title', titleError);
+    formHasErrors = true;
   }
 
-  const tag = $('form-tag').value.trim();
-  const tagErr = validateTag(tag);
-  if (tagErr) {
-    showFieldError('err-tag', tagErr);
-    hasError = true;
+  // Validate category (now a select dropdown)
+  const selectedCategory = getElement('form-tag').value;
+  const categoryError = validateCategory(selectedCategory);
+  if (categoryError) {
+    showFieldErrorMessage('err-tag', categoryError);
+    formHasErrors = true;
   }
 
-  const durH = $('form-duration-hours').value;
-  const durM = $('form-duration-minutes').value;
-  const durErr = validateDuration(durH, durM);
-  if (durErr) {
-    showFieldError('err-dur', durErr);
-    hasError = true;
+  // Validate duration
+  const durationHours = getElement('form-duration-hours').value;
+  const durationMinutes = getElement('form-duration-minutes').value;
+  const durationError = validateDuration(durationHours, durationMinutes);
+  if (durationError) {
+    showFieldErrorMessage('err-dur', durationError);
+    formHasErrors = true;
   }
 
-  if (hasError) {
-    announce('Form has errors. Please fix them before saving.', true);
-    // focus first error field
+  if (formHasErrors) {
+    announceToScreenReader(
+      'Form has errors. Please fix them before saving.',
+      true,
+    );
+    // Focus first error field
     document
       .querySelector('.field-error:not(.hidden)')
       ?.previousElementSibling?.focus();
     return;
   }
 
-  // SQL Injection Protection
-  const sanitizedTitle = sanitizeSqlInput(title);
-  const sanitizedDesc = sanitizeSqlInput($('form-description').value.trim());
-  const sanitizedTag = sanitizeSqlInput(tag);
+  // ── SQL Injection Protection (Defense in Depth) ──
+  // Sanitize all text inputs as a security best practice
+  const sanitizedTitle = sanitizeAgainstSqlInjection(taskTitle);
+  const sanitizedDescription = sanitizeAgainstSqlInjection(
+    getElement('form-description').value.trim(),
+  );
+  const sanitizedCategory = sanitizeAgainstSqlInjection(selectedCategory);
 
-  const fields = {
+  const taskFields = {
     title: sanitizedTitle,
-    description: sanitizedDesc,
-    tag: sanitizedTag || null,
-    priority: $('form-priority').value,
-    dueDate: $('form-due-date').value || null,
-    durationHours: parseInt(durH) || 0,
-    durationMinutes: parseInt(durM) || 0,
+    description: sanitizedDescription,
+    tag: sanitizedCategory || null,
+    priority: getElement('form-priority').value,
+    dueDate: getElement('form-due-date').value || null,
+    durationHours: parseInt(durationHours) || 0,
+    durationMinutes: parseInt(durationMinutes) || 0,
     modified: Date.now(),
   };
 
-  if (editingTaskId !== null) {
-    const task = AppState.tasks.find((t) => t.id === editingTaskId);
-    if (task) Object.assign(task, fields);
-    announce(`Task "${title}" updated.`);
+  if (currentlyEditingTaskId !== null) {
+    // Editing existing task
+    const existingTask = AppState.tasks.find(
+      (task) => task.id === currentlyEditingTaskId,
+    );
+    if (existingTask) {
+      Object.assign(existingTask, taskFields);
+    }
+    announceToScreenReader(`Task "${sanitizedTitle}" updated.`);
   } else {
+    // Creating new task
     AppState.tasks.push({
       id: Date.now(),
       createdAt: Date.now(),
-      done: false, // ← NEW
-      ...fields,
+      done: false,
+      ...taskFields,
     });
-    announce(`Task "${title}" added.`);
+    announceToScreenReader(`Task "${sanitizedTitle}" added.`);
   }
 
-  closeModal();
-  renderTasks();
-  if (currentSection === 'dashboard') updateDashboard();
+  closeTaskModal();
+  renderAllTasks();
+
+  if (currentlyVisibleSection === 'dashboard') {
+    updateDashboardDisplay();
+  }
 }
 
-// ── Render tasks ──────────────────────────────────────────
-const searchInput = $('search-input');
+// ── Task Rendering ────────────────────────────────────────
 
-function renderTasks() {
-  cardWrap.innerHTML = '';
-  const { tasks, searchRe } = getFilteredTasks(
-    searchInput.value,
-    currentSort,
-    currentOrder,
-    caseInsensitive,
+const searchInputElement = getElement('search-input');
+
+/**
+ * Renders all tasks to the DOM with current filters and sorting
+ */
+function renderAllTasks() {
+  taskCardsContainer.innerHTML = '';
+
+  const searchQuery = searchInputElement.value;
+  const { tasks: filteredTasks, searchRe: searchRegex } = getFilteredTasks(
+    searchQuery,
+    currentSortMethod,
+    currentSortDirection,
+    isSearchCaseInsensitive,
   );
 
-  // Footer count
-  $('footer-count').textContent =
-    `${AppState.tasks.length} task${AppState.tasks.length !== 1 ? 's' : ''}`; // pluralize "task" based on count
-
-  if (!tasks.length) {
-    // show empty state when no tasks after filtering from search or no tasks at all
-    cardWrap.innerHTML =
-      '<p class="empty-msg" role="listitem">No tasks found. Click + to create one.</p>';
+  // Show empty state if no tasks
+  if (!filteredTasks.length) {
+    taskCardsContainer.innerHTML =
+      '<p class="empty-msg" role="listitem">No tasks found. Press <kbd>N</kbd> or click <span class="plus-icon">+</span> to create one.</p>';
     return;
   }
 
-  tasks.forEach((task) => {
-    const priority = task.priority || 'medium'; // default to medium if not set
-    const priorityLabel = { low: 'Low', medium: 'Medium', high: 'High' }[
-      priority
-    ];
-    const createdStr = task.createdAt
-      ? fmtDateTime(task.createdAt)
-      : task.date || '';
-    const modifiedStr = task.modified ? fmtDateTime(task.modified) : null;
-    const showModified = modifiedStr && modifiedStr !== createdStr;
-    const dueDateStr = task.dueDate ? fmtDateTime(task.dueDate) : null;
-    const durParts = [
-      task.durationHours ? `${task.durationHours}h` : '',
-      task.durationMinutes ? `${task.durationMinutes}m` : '',
-    ].filter(Boolean); // return array with only non-empty values, so if durationHours is 0, it won't show "0h"
-    const durationStr = durParts.length ? durParts.join(' ') : null;
+  // Render each task card
+  filteredTasks.forEach((taskData) => {
+    const taskPriority = taskData.priority || 'medium';
+    const priorityLabels = { low: 'Low', medium: 'Medium', high: 'High' };
+    const priorityLabel = priorityLabels[taskPriority];
 
-    // Apply regex highlight to title, description, tag
-    const re = searchRe ? new RegExp(searchRe.source, searchRe.flags) : null;
-    const titleHtml = highlight(task.title, re);
-    const descHtml = task.description ? highlight(task.description, re) : null;
-    const tagHtml = task.tag ? highlight(task.tag, re) : null;
+    const createdDateString = taskData.createdAt
+      ? formatDateTime(taskData.createdAt)
+      : taskData.date || '';
+    const modifiedDateString = taskData.modified
+      ? formatDateTime(taskData.modified)
+      : null;
+    const shouldShowModified =
+      modifiedDateString && modifiedDateString !== createdDateString;
+    const dueDateString = taskData.dueDate
+      ? formatDateTime(taskData.dueDate)
+      : null;
 
-    const article = document.createElement('article');
-    article.className = `card priority-border-${priority} ${task.done ? 'card-done' : ''}`;
-    article.dataset.id = task.id;
-    article.setAttribute('role', 'listitem');
-    article.setAttribute(
+    // Format duration
+    const durationParts = [
+      taskData.durationHours ? `${taskData.durationHours}h` : '',
+      taskData.durationMinutes ? `${taskData.durationMinutes}m` : '',
+    ].filter(Boolean);
+    const durationString = durationParts.length
+      ? durationParts.join(' ')
+      : null;
+
+    // Apply regex highlighting
+    const highlightRegex = searchRegex
+      ? new RegExp(searchRegex.source, searchRegex.flags)
+      : null;
+    const highlightedTitle = highlight(taskData.title, highlightRegex);
+    const highlightedDescription = taskData.description
+      ? highlight(taskData.description, highlightRegex)
+      : null;
+    const highlightedTag = taskData.tag
+      ? highlight(taskData.tag, highlightRegex)
+      : null;
+
+    // Create task card
+    const taskCard = document.createElement('article');
+    taskCard.className = `card priority-border-${taskPriority} ${taskData.done ? 'card-done' : ''}`;
+    taskCard.dataset.id = taskData.id;
+    taskCard.setAttribute('role', 'listitem');
+    taskCard.setAttribute(
       'aria-label',
-      `Task: ${task.title}, priority ${priorityLabel}${task.done ? ', completed' : ''}`,
+      `Task: ${taskData.title}, priority ${priorityLabel}${taskData.done ? ', completed' : ''}`,
     );
 
-    article.innerHTML = `
+    taskCard.innerHTML = `
       <div class="card-header">
         <label class="checkbox-label">
-          <input type="checkbox" class="task-checkbox" ${task.done ? 'checked' : ''} aria-label="Mark ${escapeHtml(task.title)} as ${task.done ? 'incomplete' : 'complete'}" />
-          <h3 class="${task.done ? 'task-done-text' : ''}">${titleHtml}</h3>
+          <input type="checkbox" class="task-checkbox" ${taskData.done ? 'checked' : ''} 
+                 aria-label="Mark ${escapeHtmlCharacters(taskData.title)} as ${taskData.done ? 'incomplete' : 'complete'}" />
+          <h3 class="${taskData.done ? 'task-done-text' : ''}">${highlightedTitle}</h3>
         </label>
-        <span class="priority-badge priority-${priority}" aria-label="Priority: ${priorityLabel}">${priorityLabel}</span>
+        <span class="priority-badge priority-${taskPriority}" aria-label="Priority: ${priorityLabel}">${priorityLabel}</span>
       </div>
-      <p class="task-date"><time datetime="${task.createdAt || ''}" >Created: ${createdStr}</time></p>
-      ${showModified ? `<p class="task-date">Modified: ${modifiedStr}</p>` : ''}
-      ${tagHtml ? `<p class="task-tag"><span aria-label="Tag">🏷</span> ${tagHtml}</p>` : ''}
-      ${descHtml ? `<p class="task-description">${descHtml}</p>` : ''}
-      ${dueDateStr ? `<p class="task-due"><span aria-hidden="true">⏰</span> Due: ${dueDateStr}</p>` : ''}
-      ${durationStr ? `<p class="task-duration"><span aria-hidden="true">⏱</span> Duration: ${durationStr}</p>` : ''}
+      <p class="task-date"><time datetime="${taskData.createdAt || ''}">Created: ${createdDateString}</time></p>
+      ${shouldShowModified ? `<p class="task-date">Modified: ${modifiedDateString}</p>` : ''}
+      ${highlightedTag ? `<p class="task-tag">${highlightedTag}</p>` : ''}
+      ${highlightedDescription ? `<p class="task-description">${highlightedDescription}</p>` : ''}
+      ${dueDateString ? `<p class="task-due">Due: ${dueDateString}</p>` : ''}
+      ${durationString ? `<p class="task-duration">Duration: ${durationString}</p>` : ''}
       <div class="card-actions">
-        <button class="edit-btn"   aria-label="Edit task: ${escapeHtml(task.title)}">Edit</button>
-        <button class="delete-btn" aria-label="Delete task: ${escapeHtml(task.title)}">Delete</button>
-      </div>`;
+        <button class="edit-btn" aria-label="Edit task: ${escapeHtmlCharacters(taskData.title)}">Edit</button>
+        <button class="delete-btn" aria-label="Delete task: ${escapeHtmlCharacters(taskData.title)}">Delete</button>
+      </div>
+    `;
 
-    article.querySelector('.task-checkbox').addEventListener('change', (e) => {
-      task.done = e.target.checked;
-      task.modified = Date.now();
-      announce(
-        `Task "${task.title}" marked as ${task.done ? 'complete' : 'incomplete'}.`,
-      );
-      renderTasks();
-      if (currentSection === 'dashboard') updateDashboard();
+    // Wire up checkbox
+    taskCard
+      .querySelector('.task-checkbox')
+      .addEventListener('change', (event) => {
+        taskData.done = event.target.checked;
+        taskData.modified = Date.now();
+        announceToScreenReader(
+          `Task "${taskData.title}" marked as ${taskData.done ? 'complete' : 'incomplete'}.`,
+        );
+        renderAllTasks();
+        if (currentlyVisibleSection === 'dashboard') {
+          updateDashboardDisplay();
+        }
+      });
+
+    // Wire up edit button
+    taskCard.querySelector('.edit-btn').addEventListener('click', () => {
+      const taskToEdit = AppState.tasks.find((task) => task.id === taskData.id);
+      if (taskToEdit) openTaskModal(taskToEdit);
     });
 
-    article.querySelector('.edit-btn').addEventListener('click', () => {
-      const t = AppState.tasks.find((t) => t.id === task.id);
-      if (t) openModal(t);
-    });
-
-    article.querySelector('.delete-btn').addEventListener('click', () => {
-      if (confirm(`Delete "${task.title}"?`)) {
-        AppState.tasks = AppState.tasks.filter((t) => t.id !== task.id);
-        announce(`Task "${task.title}" deleted.`);
-        renderTasks();
-        if (currentSection === 'dashboard') updateDashboard();
+    // Wire up delete button
+    taskCard.querySelector('.delete-btn').addEventListener('click', () => {
+      if (confirm(`Delete "${taskData.title}"?`)) {
+        AppState.tasks = AppState.tasks.filter(
+          (task) => task.id !== taskData.id,
+        );
+        announceToScreenReader(`Task "${taskData.title}" deleted.`);
+        renderAllTasks();
+        if (currentlyVisibleSection === 'dashboard') {
+          updateDashboardDisplay();
+        }
       }
     });
 
-    cardWrap.appendChild(article);
+    taskCardsContainer.appendChild(taskCard);
   });
 
   saveTasks();
-  updateCapStatus();
+  updateCapacityStatus();
 }
 
-// ── Cap / Target ──────────────────────────────────────────
-function updateCapStatus() {
-  const cap = parseInt($('cap-input')?.value) || 10;
-  const open = AppState.tasks.filter((t) => !t.done).length;
-  const el = $('cap-status');
-  if (!el) return;
-  if (open > cap) {
-    el.textContent = `⚠ Over limit: ${open}/${cap} tasks (${open - cap} over).`;
-    el.className = 'cap-over';
-    el.setAttribute('aria-live', 'assertive');
-    announce(
-      `Warning: you have ${open - cap} tasks over your cap of ${cap}.`,
+// ── Task Capacity Management ──────────────────────────────
+
+/**
+ * Updates the task capacity status message
+ */
+function updateCapacityStatus() {
+  const maxCapacity = parseInt(getElement('cap-input')?.value) || 10;
+  const openTaskCount = AppState.tasks.filter((task) => !task.done).length;
+  const capacityElement = getElement('cap-status');
+
+  if (!capacityElement) return;
+
+  if (openTaskCount > maxCapacity) {
+    const overageAmount = openTaskCount - maxCapacity;
+    capacityElement.textContent = `⚠ Over limit: ${openTaskCount}/${maxCapacity} open tasks (${overageAmount} over).`;
+    capacityElement.className = 'cap-over';
+    capacityElement.setAttribute('aria-live', 'assertive');
+    announceToScreenReader(
+      `Warning: you have ${overageAmount} tasks over your capacity of ${maxCapacity}.`,
       true,
     );
   } else {
-    el.textContent = `${open}/${cap} tasks — ${cap - open} remaining.`;
-    el.className = 'cap-ok';
-    el.setAttribute('aria-live', 'polite');
+    const remainingCapacity = maxCapacity - openTaskCount;
+    capacityElement.textContent = `${openTaskCount}/${maxCapacity} open tasks — ${remainingCapacity} remaining.`;
+    capacityElement.className = 'cap-ok';
+    capacityElement.setAttribute('aria-live', 'polite');
   }
 }
 
-$('cap-input')?.addEventListener('input', updateCapStatus);
+getElement('cap-input')?.addEventListener('input', updateCapacityStatus);
 
-// ── Dashboard ─────────────────────────────────────────────
-function updateDashboard() {
-  const tasks = AppState.tasks;
-  const open = tasks.filter((t) => !t.done);
-  const done = tasks.filter((t) => t.done);
+// ── Dashboard Display ─────────────────────────────────────
 
-  $('stat-total').textContent = tasks.length;
-  $('stat-high').textContent = open.filter((t) => t.priority === 'high').length;
+/**
+ * Updates all dashboard statistics and charts
+ */
+function updateDashboardDisplay() {
+  const allTasks = AppState.tasks;
+  const openTasks = allTasks.filter((task) => !task.done);
+  const completedTasks = allTasks.filter((task) => task.done);
 
-  const now = Date.now();
-  const weekMs = 7 * 24 * 60 * 60 * 1000;
-  $('stat-week').textContent = open.filter(
-    (t) =>
-      t.dueDate &&
-      new Date(t.dueDate) >= new Date() &&
-      new Date(t.dueDate) <= new Date(now + weekMs),
+  // Basic stats
+  getElement('stat-total').textContent = allTasks.length;
+  getElement('stat-high').textContent = openTasks.filter(
+    (task) => task.priority === 'high',
   ).length;
-  $('stat-done').textContent = done.length;
+  getElement('stat-done').textContent = completedTasks.length;
 
-  // Trend chart — last 7 days
-  const chart = $('trend-chart');
-  chart.innerHTML = '';
-  const days = 7;
-  const counts = Array(days).fill(0);
+  // Due this week
+  const currentTime = Date.now();
+  const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+  const dueThisWeek = openTasks.filter(
+    (task) =>
+      task.dueDate &&
+      new Date(task.dueDate) >= new Date() &&
+      new Date(task.dueDate) <= new Date(currentTime + oneWeekMs),
+  );
+  getElement('stat-week').textContent = dueThisWeek.length;
+
+  // Progress meter
+  const totalTasks = allTasks.length;
+  const completionPercentage =
+    totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
+  const progressBar = getElement('progress-bar');
+  const progressText = getElement('progress-text');
+  if (progressBar && progressText) {
+    progressBar.style.width = `${completionPercentage}%`;
+    progressText.textContent = `${completionPercentage}% Complete`;
+  }
+
+  // Category breakdown
+  renderCategoryBreakdown();
+
+  // Priority chart
+  renderPriorityDistribution();
+
+  // Activity trend chart
+  renderActivityTrend();
+
+  updateCapacityStatus();
+}
+
+/**
+ * Renders category breakdown chart
+ */
+function renderCategoryBreakdown() {
+  const categoryContainer = getElement('category-breakdown');
+  if (!categoryContainer) return;
+
+  categoryContainer.innerHTML = '';
+
+  const categoryCounts = {};
+  const categoryNames = {
+    academic: 'Academic',
+    personal: 'Personal',
+    professional: 'Professional',
+    financial: 'Financial',
+    entertainment: 'Entertainment',
+  };
+
+  AppState.tasks.forEach((task) => {
+    const category = task.tag || 'none';
+    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+  });
+
+  const maxCount = Math.max(...Object.values(categoryCounts), 1);
+
+  Object.entries(categoryCounts).forEach(([category, count]) => {
+    const barWidth = (count / maxCount) * 100;
+    const categoryLabel = categoryNames[category] || 'Other';
+
+    const barElement = document.createElement('div');
+    barElement.className = 'category-bar';
+    barElement.innerHTML = `
+      <div class="category-label">${categoryLabel}</div>
+      <div class="category-bar-container">
+        <div class="category-bar-fill" style="width: ${barWidth}%"></div>
+      </div>
+      <div class="category-count">${count}</div>
+    `;
+    categoryContainer.appendChild(barElement);
+  });
+}
+
+/**
+ * Renders priority distribution chart
+ */
+function renderPriorityDistribution() {
+  const priorityContainer = getElement('priority-chart');
+  if (!priorityContainer) return;
+
+  priorityContainer.innerHTML = '';
+
+  const priorityCounts = {
+    high: AppState.tasks.filter((t) => t.priority === 'high').length,
+    medium: AppState.tasks.filter((t) => t.priority === 'medium').length,
+    low: AppState.tasks.filter((t) => t.priority === 'low').length,
+  };
+
+  const totalTasks = AppState.tasks.length || 1;
+
+  ['high', 'medium', 'low'].forEach((priority) => {
+    const count = priorityCounts[priority];
+    const percentage = Math.round((count / totalTasks) * 100);
+
+    const priorityLabels = {
+      high: 'High Priority',
+      medium: 'Medium Priority',
+      low: 'Low Priority',
+    };
+
+    const barElement = document.createElement('div');
+    barElement.className = `priority-bar priority-${priority}`;
+    barElement.innerHTML = `
+      <div class="priority-label">${priorityLabels[priority]}</div>
+      <div class="priority-bar-container">
+        <div class="priority-bar-fill" style="width: ${percentage}%"></div>
+      </div>
+      <div class="priority-count">${count} (${percentage}%)</div>
+    `;
+    priorityContainer.appendChild(barElement);
+  });
+}
+
+/**
+ * Renders 7-day activity trend chart
+ */
+function renderActivityTrend() {
+  const chartContainer = getElement('trend-chart');
+  if (!chartContainer) return;
+
+  chartContainer.innerHTML = '';
+
+  const numberOfDays = 7;
+  const dailyCounts = Array(numberOfDays).fill(0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  tasks.forEach((t) => {
-    const created = new Date(t.createdAt || t.id);
-    const diffDay = Math.floor((today - created) / (24 * 60 * 60 * 1000));
-    if (diffDay >= 0 && diffDay < days) counts[days - 1 - diffDay]++;
+  // Count tasks created each day
+  AppState.tasks.forEach((task) => {
+    const taskCreationDate = new Date(task.createdAt || task.id);
+    const daysDifference = Math.floor(
+      (today - taskCreationDate) / (24 * 60 * 60 * 1000),
+    );
+    if (daysDifference >= 0 && daysDifference < numberOfDays) {
+      dailyCounts[numberOfDays - 1 - daysDifference]++;
+    }
   });
 
-  const max = Math.max(...counts, 1);
-  counts.forEach((count, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (days - 1 - i));
-    const label = d.toLocaleDateString([], { weekday: 'short' });
+  const maxDailyCount = Math.max(...dailyCounts, 1);
 
-    const col = document.createElement('div');
-    col.className = 'chart-col';
-    col.innerHTML = `
+  dailyCounts.forEach((count, index) => {
+    const chartDate = new Date(today);
+    chartDate.setDate(today.getDate() - (numberOfDays - 1 - index));
+    const dayLabel = chartDate.toLocaleDateString([], { weekday: 'short' });
+
+    const barHeight = Math.round((count / maxDailyCount) * 100);
+
+    const columnElement = document.createElement('div');
+    columnElement.className = 'chart-col';
+    columnElement.innerHTML = `
       <div class="chart-bar-wrap">
         <span class="chart-count" aria-hidden="true">${count}</span>
-        <div class="chart-bar" style="height:${Math.round((count / max) * 100)}%"
-             role="img" aria-label="${label}: ${count} task${count !== 1 ? 's' : ''}"></div>
+        <div class="chart-bar" style="height: ${barHeight}%"
+             role="img" aria-label="${dayLabel}: ${count} task${count !== 1 ? 's' : ''}"></div>
       </div>
-      <span class="chart-label">${label}</span>`;
-    chart.appendChild(col);
+      <span class="chart-label">${dayLabel}</span>
+    `;
+    chartContainer.appendChild(columnElement);
   });
-
-  updateCapStatus();
 }
 
-// ── Search ────────────────────────────────────────────────
-searchInput.addEventListener('input', () => {
-  const q = searchInput.value;
-  const re = compileRegex(q);
-  if (q && !re) {
-    searchInput.setAttribute('aria-invalid', 'true');
-    announce('Invalid regex pattern.', true);
+// ── Search Functionality ──────────────────────────────────
+
+searchInputElement.addEventListener('input', () => {
+  const searchQuery = searchInputElement.value;
+  const compiledRegex = compileRegexSafely(searchQuery);
+
+  // Show invalid regex indicator
+  if (searchQuery && !compiledRegex) {
+    searchInputElement.setAttribute('aria-invalid', 'true');
+    announceToScreenReader('Invalid search pattern.', true);
   } else {
-    searchInput.removeAttribute('aria-invalid');
+    searchInputElement.removeAttribute('aria-invalid');
   }
-  renderTasks();
+
+  renderAllTasks();
 });
 
-// ── Global keyboard shortcuts ─────────────────────────────
-document.addEventListener('keydown', (e) => {
-  const tag = document.activeElement?.tagName?.toLowerCase();
-  const inInput = ['input', 'textarea', 'select'].includes(tag);
-  if (e.key === 'Escape') {
-    if (!$('task-modal').classList.contains('hidden')) {
-      closeModal();
+// ── Global Keyboard Shortcuts ─────────────────────────────
+
+document.addEventListener('keydown', (event) => {
+  const activeElementTag = document.activeElement?.tagName?.toLowerCase();
+  const isTypingInInput = ['input', 'textarea', 'select'].includes(
+    activeElementTag,
+  );
+
+  // Escape key - close modals and panels
+  if (event.key === 'Escape') {
+    if (!getElement('task-modal').classList.contains('hidden')) {
+      closeTaskModal();
       return;
     }
-    if (!$('settings-modal').classList.contains('hidden')) {
-      closeSettings();
+    if (!getElement('settings-modal').classList.contains('hidden')) {
+      closeSettingsModal();
       return;
     }
-    if (!sortPanel.classList.contains('hidden')) {
+    if (!sortPanelElement.classList.contains('hidden')) {
       closeSortPanel();
-      sortTrigger.focus();
+      sortTriggerButton.focus();
       return;
     }
   }
-  if (!inInput) {
-    if (e.key === 'n' || e.key === 'N') {
-      e.preventDefault();
-      openModal();
+
+  // Only allow these shortcuts when NOT typing in an input
+  if (!isTypingInInput) {
+    // N key - New task
+    if (event.key === 'n' || event.key === 'N') {
+      event.preventDefault();
+      openTaskModal();
     }
-    if (e.key === '/') {
-      e.preventDefault();
-      searchInput.focus();
+
+    // / key - Focus search
+    if (event.key === '/') {
+      event.preventDefault();
+      searchInputElement.focus();
     }
   }
 });
 
-// ── Add button ────────────────────────────────────────────
-$('add-btn').addEventListener('click', () => openModal());
+// ── Floating Add Button ───────────────────────────────────
 
-// ── Burger (mobile nav toggle) ────────────────────────────
-$('burger').addEventListener('click', () => {
-  const nav = $('main-nav');
-  const expanded = $('burger').getAttribute('aria-expanded') === 'true';
-  $('burger').setAttribute('aria-expanded', String(!expanded));
-  nav.classList.toggle('nav-open', !expanded);
+getElement('add-btn').addEventListener('click', () => {
+  openTaskModal();
 });
 
-// ── Init ──────────────────────────────────────────────────
+// ── Mobile Menu Toggle ────────────────────────────────────
+
+getElement('burger').addEventListener('click', () => {
+  const navElement = getElement('main-nav');
+  const isExpanded =
+    getElement('burger').getAttribute('aria-expanded') === 'true';
+  getElement('burger').setAttribute('aria-expanded', String(!isExpanded));
+  navElement.classList.toggle('nav-open', !isExpanded);
+});
+
+// ── Initialization ────────────────────────────────────────
+
 loadTasks();
-applySettings();
-renderTasks();
+applyUserSettings();
+renderAllTasks();
+
+// Aliases for backward compatibility with old function names
+const escapeHtml = escapeHtmlCharacters;
+const announce = announceToScreenReader;
+const renderTasks = renderAllTasks;

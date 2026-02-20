@@ -1,7 +1,7 @@
 // Highlight search result with regex
 function highlight(text, re) {
-  if (!re) return escapeHtml(text);
-  return escapeHtml(text).replace(re, function (m) {
+  if (!re) return escapeHtmlCharacters(text);
+  return escapeHtmlCharacters(text).replace(re, function (m) {
     return `<mark>${m}</mark>`;
   });
 }

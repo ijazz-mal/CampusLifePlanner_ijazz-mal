@@ -20,14 +20,13 @@
   --border-light: #e2e8f0;
   --border-medium: #cbd5e0;
 
-  /* Brand colors with gradients */
-  --accent-primary: #667eea;
-  --accent-secondary: #764ba2;
-  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-warm: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --gradient-cool: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  --gradient-success: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-
+  /* Subtle brand colors with soft gradients */
+  --accent-primary: #5c6ac4;
+  --accent-secondary: #7a6f9b;
+  --gradient-primary: linear-gradient(135deg, #5c6ac4 0%, #7a6f9b 100%);
+  --gradient-warm: linear-gradient(135deg, #e6a4b4 0%, #c97b84 100%);
+  --gradient-cool: linear-gradient(135deg, #6ba8c9 0%, #5f8fa3 100%);
+  --gradient-success: linear-gradient(135deg, #6fbf8f 0%, #5aa37a 100%);
   /* Status colors */
   --success-bg: #f0fdf4;
   --success-text: #166534;

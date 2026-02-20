@@ -46,3 +46,32 @@ function compileRegex(input, flags = 'i') {
     return null;
   }
 }
+
+// Uses lookahead to detect SQL injection attempts
+const SQL_INJECTION_PATTERN =
+  /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)|(-{2})|([';])/gi;
+
+function sanitizeSqlInput(input) {
+  if (!input || typeof input !== 'string') return input;
+
+  // Check for SQL injection patterns
+  if (SQL_INJECTION_PATTERN.test(input)) {
+    console.warn('⚠️ Potential SQL injection attempt blocked:', input);
+    // Remove dangerous patterns
+    return input
+      .replace(
+        /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)/gi,
+        '',
+      )
+      .replace(/(-{2})/g, '') // Remove SQL comments
+      .replace(/[';]/g, ''); // Remove quotes and semicolons
+  }
+
+  return input;
+}
+
+// Helper: Validate input is safe for database operations (if app uses backend)
+function isSafeDatabaseInput(input) {
+  if (!input) return true;
+  return !SQL_INJECTION_PATTERN.test(input);
+}

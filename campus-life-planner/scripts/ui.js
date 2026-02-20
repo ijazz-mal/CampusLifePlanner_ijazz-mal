@@ -1,4 +1,4 @@
-// Helpers ───────────────────────────────────────────────
+// Malicious HTML protection
 function escapeHtml(str) {
   const d = document.createElement('div');
   d.textContent = str || '';
@@ -292,10 +292,15 @@ function submitForm() {
     return;
   }
 
+  // SQL Injection Protection
+  const sanitizedTitle = sanitizeSqlInput(title);
+  const sanitizedDesc = sanitizeSqlInput($('form-description').value.trim());
+  const sanitizedTag = sanitizeSqlInput(tag);
+
   const fields = {
-    title,
-    description: $('form-description').value.trim(),
-    tag: tag || null,
+    title: sanitizedTitle,
+    description: sanitizedDesc,
+    tag: sanitizedTag || null,
     priority: $('form-priority').value,
     dueDate: $('form-due-date').value || null,
     durationHours: parseInt(durH) || 0,

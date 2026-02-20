@@ -122,6 +122,48 @@
           'advanced pattern',
         );
 
+        // ── SQL Injection Protection ──────────────────────────
+        assert(
+          'SQL: blocks SELECT keyword',
+          sanitizeSqlInput('SELECT * FROM users') === ' *  users',
+        );
+        assert(
+          'SQL: blocks DROP keyword',
+          sanitizeSqlInput('DROP TABLE tasks') === '  tasks',
+        );
+        assert(
+          'SQL: blocks SQL comments',
+          sanitizeSqlInput('admin-- OR 1=1') === 'admin OR 1=1',
+        );
+        assert(
+          'SQL: blocks dangerous quotes',
+          sanitizeSqlInput("'; DELETE FROM tasks; --") === ' DELETE  tasks ',
+        );
+        assert(
+          'SQL: allows safe input',
+          sanitizeSqlInput('Complete math homework') ===
+            'Complete math homework',
+        );
+        assert(
+          'SQL: handles null/undefined',
+          sanitizeSqlInput(null) === null &&
+            sanitizeSqlInput(undefined) === undefined,
+        );
+        assert(
+          'SQL: console warning on injection attempt',
+          (() => {
+            const original = console.warn;
+            let warned = false;
+            console.warn = () => {
+              warned = true;
+            };
+            sanitizeSqlInput('SELECT * FROM users');
+            console.warn = original;
+            return warned;
+          })(),
+          'triggers warning',
+        );
+
         // ── Search & filter ───────────────────────────────────
         AppState.tasks = [
           {
@@ -188,14 +230,14 @@
         r = getFilteredTasks('', 'date_created', 'desc');
         assert('Sort date_created desc: newest first', r.tasks[0]?.id === 3);
 
-        // ── Invalid regex fallback ───────────────────
+        // ── Invalid regex graceful fallback ───────────────────
         r = getFilteredTasks('(invalid[', 'date_created', 'asc');
         assert(
           'Search: invalid regex falls back gracefully',
           Array.isArray(r.tasks),
         );
 
-        // ── Storage ────────────────────────────────
+        // ── Storage round-trip ────────────────────────────────
         const original = [
           {
             id: 99,

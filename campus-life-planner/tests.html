@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CLP Test</title>
+  </head>
+  <body>
+    <h1>Campus Life Planner Test</h1>
+    <p>
+      Unit tests for validators, search, storage logic.
+      <a href="index.html">← Back to app</a>
+    </p>
+
+    <div class="summary">
+      <div><span id="pass-count">—</span> passed</div>
+      <div><span id="fail-count">—</span> failed</div>
+      <button onclick="runAll()">Run All Tests</button>
+      <button onclick="loadSeed()">Load Seed Data</button>
+    </div>
+    <div id="results"></div>
+
+    <!-- Load scripts so we can test them -->
+    <script src="scripts/state.js"></script>
+    <script src="scripts/storage.js"></script>
+    <script src="scripts/validators.js"></script>
+    <script src="scripts/search.js"></script>
+    <script>
+      const results = [];
+
+      function assert(label, condition, detail = '') {
+        results.push({ label, pass: !!condition, detail });
+      }
+
+      function runAll() {
+        results.length = 0;
+
+        // ── Title_pattern validation ───────────────────────────────
+        assert('Title: rejects empty string', validateTitle('') !== null);
+        assert('Title: rejects whitespace only', validateTitle('   ') !== null);
+        assert(
+          'Title: rejects leading space',
+          validateTitle(' Hello') !== null,
+        );
+        assert(
+          'Title: rejects trailing space',
+          validateTitle('Hello ') !== null,
+        );
+        assert(
+          'Title: rejects double spaces',
+          validateTitle('Hello  World') !== null,
+        );
+        assert(
+          'Title: accepts normal title',
+          validateTitle('Study for exam') === null,
+        );
+        assert(
+          'Title: accepts single word',
+          validateTitle('Homework') === null,
+        );
+        assert(
+          'Title: rejects duplicate words',
+          validateTitle('study study') !== null,
+          'back-reference test',
+        );
+        assert(
+          'Title: accepts different words',
+          validateTitle('study hard') === null,
+        );
+
+        // ── Tag_pattern validation ─────────────────────────────────
+        assert('Tag: accepts single word', validateTag('academic') === null);
+        assert('Tag: accepts hyphenated', validateTag('group-work') === null);
+        assert(
+          'Tag: accepts spaced words',
+          validateTag('team project') === null,
+        );
+        assert('Tag: rejects numbers', validateTag('tag123') !== null);
+        assert('Tag: rejects leading hyphen', validateTag('-bad') !== null);
+        assert('Tag: optional (empty ok)', validateTag('') === null);
+        assert('Tag: optional (null ok)', validateTag(null) === null);
+
+        // ── Duration_pattern validation ───────────────────────────────
+        assert(
+          'Duration: rejects negative hours',
+          validateDuration('-1', '0') !== null,
+        );
+        assert(
+          'Duration: rejects float hours',
+          validateDuration('1.5', '0') !== null,
+        );
+        assert(
+          'Duration: rejects minutes > 59',
+          validateDuration('0', '60') !== null,
+        );
+        assert(
+          'Duration: accepts 0h 30m',
+          validateDuration('0', '30') === null,
+        );
+        assert(
+          'Duration: accepts empty (optional)',
+          validateDuration('', '') === null,
+        );
+        assert('Duration: accepts 2h 0m', validateDuration('2', '0') === null);
+
+        // ── Safe regex compiler ───────────────────────────────
+        assert(
+          'Regex: compiles valid pattern',
+          compileRegex('hello') instanceof RegExp,
+        );
+        assert(
+          'Regex: returns null for invalid pattern',
+          compileRegex('(unclosed') === null,
+        );
+        assert(
+          'Regex: returns null for empty input',
+          compileRegex('') === null,
+        );
+        assert(
+          'Regex: supports lookahead',
+          compileRegex('(?=.*test)') instanceof RegExp,
+          'advanced pattern',
+        );
+
+        // ── Search & filter ───────────────────────────────────
+        AppState.tasks = [
+          {
+            id: 1,
+            createdAt: 1000,
+            title: 'Physics exam',
+            tag: 'academic',
+            priority: 'high',
+            modified: 1000,
+            done: false,
+          },
+          {
+            id: 2,
+            createdAt: 2000,
+            title: 'Grocery run',
+            tag: 'personal',
+            priority: 'low',
+            modified: 2000,
+            done: false,
+          },
+          {
+            id: 3,
+            createdAt: 3000,
+            title: 'Team meeting',
+            tag: 'group-work',
+            priority: 'medium',
+            modified: 3000,
+            dueDate: '2026-03-01T10:00',
+            done: false,
+          },
+        ];
+
+        let r = getFilteredTasks('physics', 'date_created', 'asc');
+        assert('Search: finds by title', r.tasks.length === 1);
+        assert(
+          'Search: match is correct task',
+          r.tasks[0]?.title === 'Physics exam',
+        );
+
+        r = getFilteredTasks('academic', 'date_created', 'asc');
+        assert('Search: finds by tag', r.tasks.length === 1);
+
+        r = getFilteredTasks('', 'a_to_z', 'asc');
+        assert(
+          'Sort A-Z asc: Grocery first',
+          r.tasks[0]?.title === 'Grocery run',
+        );
+
+        r = getFilteredTasks('', 'a_to_z', 'desc');
+        assert(
+          'Sort A-Z desc: Team first',
+          r.tasks[0]?.title === 'Team meeting',
+        );
+
+        r = getFilteredTasks('', 'priority', 'asc');
+        assert(
+          'Sort priority asc: high first',
+          r.tasks[0]?.priority === 'high',
+        );
+
+        r = getFilteredTasks('', 'priority', 'desc');
+        assert('Sort priority desc: low first', r.tasks[0]?.priority === 'low');
+
+        r = getFilteredTasks('', 'date_created', 'desc');
+        assert('Sort date_created desc: newest first', r.tasks[0]?.id === 3);
+
+        // ── Invalid regex fallback ───────────────────
+        r = getFilteredTasks('(invalid[', 'date_created', 'asc');
+        assert(
+          'Search: invalid regex falls back gracefully',
+          Array.isArray(r.tasks),
+        );
+
+        // ── Storage ────────────────────────────────
+        const original = [
+          {
+            id: 99,
+            title: 'Persist test',
+            createdAt: Date.now(),
+            modified: Date.now(),
+          },
+        ];
+        AppState.tasks = original;
+        saveTasks();
+        AppState.tasks = [];
+        loadTasks();
+        assert(
+          'Storage: tasks survive save/load round-trip',
+          AppState.tasks.length === 1 && AppState.tasks[0].id === 99,
+        );
+
+        // ── validateRecord ─────────────────────────────────────
+        assert(
+          'validateRecord: valid record passes',
+          validateRecord({ id: 1, title: 'Test' }),
+        );
+        assert(
+          'validateRecord: missing title fails',
+          !validateRecord({ id: 1 }),
+        );
+        assert(
+          'validateRecord: empty title fails',
+          !validateRecord({ id: 1, title: '  ' }),
+        );
+        assert('validateRecord: non-array entry fails', !validateRecord(null));
+
+        // ── Render results ────────────────────────────────────
+        const passed = results.filter((r) => r.pass).length;
+        const failed = results.filter((r) => !r.pass).length;
+        document.getElementById('pass-count').textContent = passed;
+        document.getElementById('fail-count').textContent = failed;
+
+        const container = document.getElementById('results');
+        container.innerHTML = '';
+        results.forEach((r) => {
+          const div = document.createElement('div');
+          div.className = `test ${r.pass ? 'pass' : 'fail'}`;
+          div.innerHTML = `<div class="label">${r.pass ? '✓' : '✗'} ${r.label}</div>${r.detail ? `<div class="detail">${r.detail}</div>` : ''}`;
+          container.appendChild(div);
+        });
+      }
+
+      async function loadSeed() {
+        try {
+          const res = await fetch('seed.json');
+          const data = await res.json();
+          localStorage.setItem('clp:tasks', JSON.stringify(data));
+          alert(
+            `Loaded ${data.length} seed tasks. Reload the app to see them.`,
+          );
+        } catch (e) {
+          alert('Error loading seed: ' + e.message);
+        }
+      }
+
+      runAll();
+    </script>
+  </body>
+</html>

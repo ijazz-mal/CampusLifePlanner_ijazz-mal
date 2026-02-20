@@ -1,0 +1,115 @@
+/* ── 1024px — desktop refinements ───────────────────────── */
+@media (max-width: 1024px) {
+  #stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── 768px — tablet ──────────────────────────────────────── */
+@media (max-width: 768px) {
+  #burger {
+    display: block;
+  }
+
+  #main-nav {
+    display: none;
+    flex-direction: column;
+    padding: 8px 16px;
+    gap: 0;
+  }
+  #main-nav.nav-open {
+    display: flex;
+  }
+
+  .nav-btn {
+    border-bottom: none;
+    border-left: 3px solid transparent;
+    padding: 10px 12px;
+    text-align: left;
+  }
+  .nav-btn.active {
+    border-left-color: var(--accent);
+    border-bottom: none;
+  }
+
+  #card-wrapp {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  #search-input {
+    width: 140px;
+  }
+  #search-input:focus {
+    width: 180px;
+  }
+
+  #stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── 480px — mobile ──────────────────────────────────────── */
+@media (max-width: 480px) {
+  header {
+    padding: 10px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #app-title {
+    font-size: 1rem;
+  }
+
+  #header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  #search-input,
+  #search-input:focus {
+    width: 120px;
+  }
+
+  #card-wrapp {
+    grid-template-columns: 1fr !important;
+  }
+
+  #add-btn {
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+  }
+
+  #sort-panel {
+    left: auto;
+    right: 0;
+  }
+
+  #stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  main {
+    padding: 16px;
+  }
+
+  .modal-content {
+    margin: 10px;
+  }
+}
+
+/* ── 360px — small mobile ────────────────────────────────── */
+@media (max-width: 360px) {
+  #stats-grid {
+    grid-template-columns: 1fr;
+  }
+  #header-controls {
+    gap: 6px;
+  }
+  #search-input,
+  #search-input:focus {
+    width: 90px;
+  }
+}

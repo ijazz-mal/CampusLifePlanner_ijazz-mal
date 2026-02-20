@@ -5,63 +5,462 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Campus Life Planner</title>
     <link rel="stylesheet" href="styles/main.css" />
+    <link rel="stylesheet" href="styles/responsive.css" />
   </head>
   <body>
-    <header>
-      <button id="burger">&#9776;</button>
-      <select id="sort-select">
-        <option value="date_modified">Date modified</option>
-        <option value="date_added">Date added</option>
-        <option value="a_to_z">A-Z</option>
-        <option value="due_date">Due date</option>
-      </select>
-      <label for="search-input">Search tasks</label>
-      <input id="search-input" type="text" />
-    </header>
-    <main>
-      <section>
-        <div id="card-wrapp"></div>
-      </section>
-      <button id="add-btn">add +</button>
-      <!-- Task Modal -->
-      <div id="task-modal" class="modal hidden">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h2 id="modal-title">Add Task</h2>
-            <button id="modal-close">&times;</button>
+    <!-- Skip to content -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <header role="banner">
+      <button
+        id="burger"
+        aria-label="Toggle navigation"
+        aria-expanded="false"
+        aria-controls="main-nav"
+      >
+        &#9776;
+      </button>
+      <h1 id="app-title">Campus Life Planner</h1>
+      <div id="header-controls">
+        <div id="sort-group" role="group" aria-label="Sort tasks">
+          <button
+            id="sort-trigger"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="sort-panel"
+          >
+            Sort &#9660;
+          </button>
+          <div
+            id="sort-panel"
+            role="menu"
+            class="hidden"
+            aria-label="Sort options"
+          >
+            <div id="sort-options" role="group" aria-label="Sort by">
+              <button
+                class="sort-option active"
+                role="menuitemradio"
+                aria-checked="true"
+                data-value="date_created"
+              >
+                Date created
+              </button>
+              <button
+                class="sort-option"
+                role="menuitemradio"
+                aria-checked="false"
+                data-value="date_modified"
+              >
+                Date modified
+              </button>
+              <button
+                class="sort-option"
+                role="menuitemradio"
+                aria-checked="false"
+                data-value="a_to_z"
+              >
+                A–Z
+              </button>
+              <button
+                class="sort-option"
+                role="menuitemradio"
+                aria-checked="false"
+                data-value="due_date"
+              >
+                Due date
+              </button>
+              <button
+                class="sort-option"
+                role="menuitemradio"
+                aria-checked="false"
+                data-value="priority"
+              >
+                Priority
+              </button>
+            </div>
+            <div id="sort-order" role="group" aria-label="Sort order">
+              <button
+                class="order-btn active"
+                role="menuitemradio"
+                aria-checked="true"
+                data-order="asc"
+              >
+                &#9650; Asc
+              </button>
+              <button
+                class="order-btn"
+                role="menuitemradio"
+                aria-checked="false"
+                data-order="desc"
+              >
+                &#9660; Desc
+              </button>
+            </div>
           </div>
-          <div class="modal-body">
-            <label for="form-title">Title *</label>
+        </div>
+        <label for="search-input" class="sr-only">Search tasks</label>
+        <input
+          id="search-input"
+          type="search"
+          placeholder="Search tasks…"
+          aria-label="Search tasks"
+          autocomplete="off"
+        />
+        <button id="settings-btn" aria-label="Open settings">&#9881;</button>
+      </div>
+    </header>
+
+    <nav id="main-nav" aria-label="App sections">
+      <button class="nav-btn active" data-section="tasks" aria-current="page">
+        Tasks
+      </button>
+      <button class="nav-btn" data-section="dashboard">Dashboard</button>
+      <button class="nav-btn" data-section="about">About</button>
+    </nav>
+
+    <main id="main-content" tabindex="-1">
+      <!-- ── Tasks section ─────────────────────────── -->
+      <section id="section-tasks" aria-label="Task list">
+        <div
+          id="card-wrapp"
+          role="list"
+          aria-label="Tasks"
+          aria-live="polite"
+          aria-atomic="false"
+        ></div>
+      </section>
+
+      <!-- ── Dashboard section ─────────────────────── -->
+      <section id="section-dashboard" class="hidden" aria-label="Dashboard">
+        <h2>Dashboard</h2>
+        <div id="stats-grid">
+          <div class="stat-card" role="region" aria-label="Total tasks">
+            <span class="stat-value" id="stat-total">0</span>
+            <span class="stat-label">Total Tasks</span>
+          </div>
+          <div class="stat-card" role="region" aria-label="High priority tasks">
+            <span class="stat-value" id="stat-high">0</span>
+            <span class="stat-label">High Priority</span>
+          </div>
+          <div class="stat-card" role="region" aria-label="Due this week">
+            <span class="stat-value" id="stat-week">0</span>
+            <span class="stat-label">Due This Week</span>
+          </div>
+          <div class="stat-card" role="region" aria-label="Completed tasks">
+            <span class="stat-value" id="stat-done">0</span>
+            <span class="stat-label">Completed</span>
+          </div>
+        </div>
+
+        <h3>Tasks added — last 7 days</h3>
+        <div
+          id="trend-chart"
+          aria-label="Tasks added in last 7 days bar chart"
+          role="img"
+        ></div>
+
+        <h3>Task Cap / Target</h3>
+        <div id="cap-row">
+          <label for="cap-input">Max open tasks:</label>
+          <input
+            type="number"
+            id="cap-input"
+            min="1"
+            max="100"
+            value="10"
+            aria-describedby="cap-status"
+          />
+        </div>
+        <div
+          id="cap-status"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        ></div>
+      </section>
+
+      <!-- About section -->
+      <section id="section-about" class="hidden" aria-label="About">
+        <h2>About</h2>
+        <p>
+          Campus Life Planner helps students organise tasks, events, and
+          deadlines in one clean interface.
+        </p>
+        <h3>Contact</h3>
+        <ul>
+          <li>
+            GitHub:
+            <a
+              href="https://github.com/ijazz-mal"
+              target="_blank"
+              rel="noopener"
+              >github.com/ijazz-mal</a
+            >
+          </li>
+          <li>
+            Email:
+            <a href="mailto:i.henryjay@alustudent.com"
+              >i.henryjay@alustudent.com</a
+            >
+          </li>
+        </ul>
+        <h3>Features</h3>
+        <ul>
+          <li>
+            Add, edit, delete tasks with title, description, tag, priority, due
+            date &amp; duration
+          </li>
+          <li>Regex-powered live search with match highlighting</li>
+          <li>Sort by date created, modified, A–Z, due date, or priority</li>
+          <li>Stats dashboard with 7-day trend chart and task cap</li>
+          <li>JSON import / export with schema validation</li>
+          <li>Dark mode &amp; configurable card columns</li>
+          <li>Fully keyboard-accessible</li>
+        </ul>
+        <h3>Keyboard Shortcuts</h3>
+        <table id="keyboard-table">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><kbd>N</kbd></td>
+              <td>New task (when not in an input)</td>
+            </tr>
+            <tr>
+              <td><kbd>/</kbd></td>
+              <td>Focus search</td>
+            </tr>
+            <tr>
+              <td><kbd>Esc</kbd></td>
+              <td>Close modal / sort panel</td>
+            </tr>
+            <tr>
+              <td><kbd>Enter</kbd></td>
+              <td>Submit form</td>
+            </tr>
+            <tr>
+              <td><kbd>Tab</kbd></td>
+              <td>Move between focusable elements</td>
+            </tr>
+            <tr>
+              <td><kbd>↑ ↓</kbd></td>
+              <td>Navigate sort options (when panel open)</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <footer role="contentinfo">
+      <p>
+        Made by ALU &mdash; <span id="footer-count" aria-live="polite"></span>
+      </p>
+    </footer>
+
+    <!-- Floating Add Button -->
+    <button id="add-btn" aria-label="Add new task">+</button>
+
+    <!-- ARIA live region for status messages -->
+    <div
+      id="live-status"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      class="sr-only"
+    ></div>
+    <div
+      id="live-assertive"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+      class="sr-only"
+    ></div>
+
+    <!-- add task popup -->
+    <div
+      id="task-modal"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modal-title">Add Task</h2>
+          <button id="modal-close" aria-label="Close modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="field-group">
+            <label for="form-title"
+              >Title <span class="required" aria-hidden="true">*</span></label
+            >
             <input
               type="text"
               id="form-title"
-              placeholder="Enter task title..."
+              placeholder="e.g. Study for finals"
+              autocomplete="off"
+              aria-required="true"
+              aria-describedby="err-title"
             />
+            <span id="err-title" class="field-error hidden" role="alert"></span>
+          </div>
 
+          <div class="field-group">
             <label for="form-description">Description</label>
             <textarea
               id="form-description"
-              placeholder="Optional details..."
               rows="3"
+              placeholder="Optional details…"
+              aria-describedby="err-desc"
             ></textarea>
-
-            <label for="form-date">Due Date</label>
-            <input type="date" id="form-date" />
-
-            <p id="form-error" class="form-error hidden">
-              Title cannot be empty.
-            </p>
+            <span id="err-desc" class="field-error hidden" role="alert"></span>
           </div>
-          <div class="modal-footer">
-            <button id="modal-cancel">Cancel</button>
-            <button id="modal-submit">Save</button>
+
+          <div class="field-group">
+            <label for="form-tag">Tag</label>
+            <input
+              type="text"
+              id="form-tag"
+              placeholder="e.g. academic"
+              autocomplete="off"
+              aria-describedby="err-tag hint-tag"
+            />
+            <span id="hint-tag" class="field-hint"
+              >Letters, spaces, hyphens only</span
+            >
+            <span id="err-tag" class="field-error hidden" role="alert"></span>
           </div>
+
+          <div class="field-group">
+            <label for="form-priority">Priority</label>
+            <select id="form-priority" aria-describedby="err-priority">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+            <span
+              id="err-priority"
+              class="field-error hidden"
+              role="alert"
+            ></span>
+          </div>
+
+          <div class="field-group">
+            <label for="form-due-date">Due Date &amp; Time</label>
+            <input
+              type="datetime-local"
+              id="form-due-date"
+              aria-describedby="err-due"
+            />
+            <span id="err-due" class="field-error hidden" role="alert"></span>
+          </div>
+
+          <fieldset class="duration-fieldset">
+            <legend>Duration</legend>
+            <div class="duration-row">
+              <div class="duration-field">
+                <label for="form-duration-hours">Hours</label>
+                <input
+                  type="number"
+                  id="form-duration-hours"
+                  min="0"
+                  max="99"
+                  placeholder="0"
+                  aria-describedby="err-dur"
+                />
+              </div>
+              <div class="duration-field">
+                <label for="form-duration-minutes">Minutes</label>
+                <input
+                  type="number"
+                  id="form-duration-minutes"
+                  min="0"
+                  max="59"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <span id="err-dur" class="field-error hidden" role="alert"></span>
+          </fieldset>
+
+          <div id="form-error" class="form-error hidden" role="alert"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="modal-cancel">Cancel</button>
+          <button id="modal-submit">Save</button>
         </div>
       </div>
-    </main>
-    <footer>
-      <p>made by ALU</p>
-    </footer>
+    </div>
+
+    <!-- Settings popup -->
+    <div
+      id="settings-modal"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="settings-title">Settings</h2>
+          <button id="settings-close" aria-label="Close settings">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="field-group">
+            <label for="settings-theme">Theme</label>
+            <select id="settings-theme">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="settings-columns">Cards per row</label>
+            <select id="settings-columns">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="settings-regex-flags">Search: case-insensitive</label>
+            <input
+              type="checkbox"
+              id="settings-regex-flags"
+              checked
+              aria-label="Case insensitive search"
+            />
+          </div>
+          <div class="settings-actions">
+            <button id="btn-export">Export JSON</button>
+            <label class="file-label" for="btn-import">Import JSON</label>
+            <input
+              type="file"
+              id="btn-import"
+              accept=".json"
+              class="sr-only"
+              aria-label="Import JSON file"
+            />
+          </div>
+          <div
+            id="import-status"
+            role="status"
+            aria-live="polite"
+            class="field-hint"
+          ></div>
+        </div>
+        <div class="modal-footer">
+          <button id="settings-cancel">Close</button>
+        </div>
+      </div>
+    </div>
 
     <script src="scripts/state.js"></script>
     <script src="scripts/storage.js"></script>

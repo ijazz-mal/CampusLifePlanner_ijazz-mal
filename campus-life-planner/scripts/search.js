@@ -1,38 +1,74 @@
-function getFilteredTasks(searchText, sortType, sortOrder = 'asc') {
-  let tasks = [...AppState.tasks];
+// Highlight search result with regex
+function highlight(text, re) {
+  if (!re) return escapeHtml(text);
+  return escapeHtml(text).replace(re, function (m) {
+    return `<mark>${m}</mark>`;
+  });
+}
 
-  // Filter
+// Filter and sort
+function getFilteredTasks(
+  searchText,
+  sortType,
+  sortOrder,
+  caseInsensitive = true,
+) {
+  let tasks = [...AppState.tasks];
+  let searchRe = null;
+
   if (searchText) {
-    const query = searchText.toLowerCase();
-    tasks = tasks.filter(
-      (t) =>
-        t.title.toLowerCase().includes(query) ||
-        (t.description || '').toLowerCase().includes(query),
-    );
+    const flags = caseInsensitive ? 'gi' : 'g';
+    searchRe = compileRegex(searchText, flags);
+    if (searchRe) {
+      tasks = tasks.filter(
+        (t) =>
+          searchRe.test(t.title) ||
+          searchRe.test(t.description || '') ||
+          searchRe.test(t.tag || ''),
+      );
+      // Reset lastIndex after test() calls to avoid skipping matches
+      searchRe.lastIndex = 0;
+    } else {
+      // Invalid regex fallback: simple substring search
+      const q = searchText.toLowerCase();
+      tasks = tasks.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          (t.description || '').toLowerCase().includes(q) ||
+          (t.tag || '').toLowerCase().includes(q),
+      );
+    }
   }
 
-  // Sort
+  const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
   switch (sortType) {
-    case 'date_added':
-      tasks.sort((a, b) => a.id - b.id);
+    case 'date_created':
+      tasks.sort((x, y) => x.id - y.id);
       break;
     case 'date_modified':
-      tasks.sort((a, b) => (a.modified || a.id) - (b.modified || b.id));
+      tasks.sort((x, y) => (x.modified || x.id) - (y.modified || y.id));
       break;
     case 'a_to_z':
-      tasks.sort((a, b) => a.title.localeCompare(b.title));
+      tasks.sort((x, y) => x.title.localeCompare(y.title));
+      break;
+    case 'priority':
+      tasks.sort(
+        (a, b) =>
+          (PRIORITY_ORDER[a.priority || 'medium'] ?? 1) -
+          (PRIORITY_ORDER[b.priority || 'medium'] ?? 1),
+      );
       break;
     case 'due_date':
-      tasks.sort((a, b) => {
-        if (!a.date && !b.date) return 0;
-        if (!a.date) return 1;
-        if (!b.date) return -1;
-        return new Date(a.date) - new Date(b.date);
+      tasks.sort((x, y) => {
+        if (!x.dueDate && !y.dueDate) return 0;
+        if (!x.dueDate) return 1;
+        if (!y.dueDate) return -1;
+        return new Date(x.dueDate) - new Date(y.dueDate);
       });
       break;
   }
-
+  // Reverse if descending
   if (sortOrder === 'desc') tasks.reverse();
-
-  return { tasks, searchRe: null };
+  return { tasks, searchRe };
 }

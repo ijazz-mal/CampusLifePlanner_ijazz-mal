@@ -1,22 +1,31 @@
-const burger = document.getElementById('burger');
-const sidebar = document.querySelector('aside');
+const cardWrap = document.getElementById('card-wrapp');
 
-// Toggle sidebar on burger click
-burger.addEventListener('click', (e) => {
-  sidebar.classList.toggle('active');
-  e.stopPropagation(); // prevent immediate close
-});
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
 
-// Close sidebar if clicking outside
-document.addEventListener('click', (e) => {
-  if (!sidebar.contains(e.target) && sidebar.classList.contains('active')) {
-    sidebar.classList.remove('active');
+function renderTasks() {
+  cardWrap.innerHTML = '';
+
+  if (!AppState.tasks.length) {
+    cardWrap.innerHTML =
+      '<p class="empty-msg">No tasks yet. Click "add +" to create one!</p>';
+    return;
   }
-});
 
-// Prevent sidebar clicks from closing itself
-sidebar.addEventListener('click', (e) => {
-  e.stopPropagation();
-});
+  AppState.tasks.forEach((task) => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.dataset.id = task.id;
+    div.innerHTML = `
+      <h3>${escapeHtml(task.title)}</h3>
+      <p>${escapeHtml(task.description || '')}</p>
+      <p>Due: ${task.date || 'No due date'}</p>
+    `;
+    cardWrap.appendChild(div);
+  });
+}
 
-console.log('JS loaded');
+renderTasks();

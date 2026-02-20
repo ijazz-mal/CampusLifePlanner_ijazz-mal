@@ -28,4 +28,5 @@ function renderTasks() {
   });
 }
 
+loadTasks(); //initialize
 renderTasks();

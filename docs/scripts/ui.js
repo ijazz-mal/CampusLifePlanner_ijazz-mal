@@ -1,11 +1,3 @@
-// ══════════════════════════════════════════════════════════
-// CAMPUS LIFE PLANNER - USER INTERFACE CONTROLLER
-// ══════════════════════════════════════════════════════════
-// This file handles all DOM manipulation, user interactions,
-// animations, and visual updates for the application.
-
-// ── Helper Functions ──────────────────────────────────────
-
 /**
  * Escapes HTML special characters to prevent XSS attacks
  * @param {string} userTextInput - Raw text from user

@@ -451,11 +451,11 @@ function submitTaskForm() {
 
   // ── SQL Injection Protection (Defense in Depth) ──
   // Sanitize all text inputs as a security best practice
-  const sanitizedTitle = sanitizeAgainstSqlInjection(taskTitle);
-  const sanitizedDescription = sanitizeAgainstSqlInjection(
+  const sanitizedTitle = sanitizeSqlInput(taskTitle);
+  const sanitizedDescription = sanitizeSqlInput(
     getElement('form-description').value.trim(),
   );
-  const sanitizedCategory = sanitizeAgainstSqlInjection(selectedCategory);
+  const sanitizedCategory = sanitizeSqlInput(selectedCategory);
 
   const taskFields = {
     title: sanitizedTitle,

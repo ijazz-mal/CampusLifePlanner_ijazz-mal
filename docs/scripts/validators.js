@@ -21,13 +21,6 @@ function validateTitle(val) {
   return null;
 }
 
-function validateTag(val) {
-  if (!val) return null; //because a tag is optional
-  if (!Tag_pattern.test(val))
-    return 'Tag must contain only letters, spaces, or hyphens.';
-  return null;
-}
-
 function validateDuration(hours, minutes) {
   const h = String(hours ?? '').trim();
   const m = String(minutes ?? '').trim();
@@ -74,4 +67,11 @@ function sanitizeSqlInput(input) {
 function isDatabaseInputSafe(input) {
   if (!input) return true;
   return !SQL_INJECTION_PATTERN.test(input);
+}
+
+function validateCategory(val) {
+  if (!val) return null;
+  if (!Tag_pattern.test(val))
+    return 'Category must contain only letters, spaces, or hyphens.';
+  return null;
 }

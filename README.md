@@ -10,6 +10,14 @@ A modern, feature-rich task management application designed specifically for stu
 
 ---
 
+## 🌐 Live Demo
+
+**🚀 [View Live Application](https://ijazz-mal.github.io/CampusLifePlanner_ijazz-mal/)**
+
+> Try it now! No installation required - works directly in your browser.
+
+---
+
 ## 🌟 Features
 
 ### Core Functionality

@@ -849,7 +849,7 @@ function renderActivityTrend() {
 
 searchInputElement.addEventListener('input', () => {
   const searchQuery = searchInputElement.value;
-  const compiledRegex = compileRegexSafely(searchQuery);
+  const compiledRegex = compileRegex(searchQuery);
 
   // Show invalid regex indicator
   if (searchQuery && !compiledRegex) {

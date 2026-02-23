@@ -18,6 +18,14 @@ A modern, feature-rich task management application designed specifically for stu
 
 ---
 
+## 🌐 Demo Video
+
+**🚀 [View Demo Video](https://youtu.be/QiEfRb0T018?si=t2WNyJVuOpZshGaQ)**
+
+> Watch this video for a simpler demostration of this web app and it's features
+
+---
+
 ## 🌟 Features
 
 ### Core Functionality
